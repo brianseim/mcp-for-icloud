@@ -1,6 +1,6 @@
-﻿using EvoDynamic.McpForICloud;
-using EvoDynamic.McpForICloud.Calendar;
-using EvoDynamic.McpForICloud.Mail;
+﻿using McpForICloud;
+using McpForICloud.Calendar;
+using McpForICloud.Mail;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;

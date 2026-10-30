@@ -5,7 +5,7 @@ using MailKit.Search;
 using MailKit.Security;
 using ModelContextProtocol;
 
-namespace EvoDynamic.McpForICloud.Mail;
+namespace McpForICloud.Mail;
 
 /// <summary>
 /// Owns one long-lived IMAP connection to iCloud and serializes access to it,

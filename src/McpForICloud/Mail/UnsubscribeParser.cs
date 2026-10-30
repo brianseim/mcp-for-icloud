@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace EvoDynamic.McpForICloud.Mail;
+namespace McpForICloud.Mail;
 
 public sealed record UnsubscribeInfo(
     string Folder,

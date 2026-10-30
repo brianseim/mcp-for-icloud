@@ -2,7 +2,7 @@ using System.Net;
 using System.Runtime.InteropServices;
 using ModelContextProtocol;
 
-namespace EvoDynamic.McpForICloud;
+namespace McpForICloud;
 
 /// <summary>
 /// Reads the iCloud app-specific password from Windows Credential Manager,
@@ -47,7 +47,7 @@ public sealed class CredentialProvider(McpForICloudOptions options)
         {
             throw new McpException(
                 $"No iCloud credentials found. Create an app-specific password at account.apple.com, then run " +
-                $"`cmdkey /generic:{options.CredentialTarget} /user:<your Apple ID> /pass` and restart Claude. " +
+                $"`cmdkey /generic:{options.CredentialTarget} /user:<your Apple ID> /pass` and restart your MCP client. " +
                 $"Config file: {options.ConfigPath} (found: {options.ConfigFound}).");
         }
 

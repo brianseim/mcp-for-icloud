@@ -1,6 +1,6 @@
-# Example project instructions
+# Example assistant instructions
 
-Paste this into your Claude project's custom instructions, then edit the priorities and tone to match you.
+Paste this into your MCP client's custom instructions (a project, custom mode, rules file or system prompt), then edit the priorities and tone to match you.
 
 ---
 
