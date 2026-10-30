@@ -7,7 +7,7 @@ using MimeKit;
 using ModelContextProtocol;
 using ModelContextProtocol.Server;
 
-namespace EvoDynamic.McpForICloud.Mail;
+namespace McpForICloud.Mail;
 
 public sealed record MailSummary(
     string Folder,

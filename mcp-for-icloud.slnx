@@ -1,5 +1,5 @@
 <Solution>
   <Folder Name="/src/">
-    <Project Path="src/EvoDynamic.McpForICloud/EvoDynamic.McpForICloud.csproj" />
+    <Project Path="src/McpForICloud/McpForICloud.csproj" />
   </Folder>
 </Solution>

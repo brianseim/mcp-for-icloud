@@ -9,7 +9,7 @@ using Ical.Net.Serialization;
 using ModelContextProtocol;
 using ModelContextProtocol.Server;
 
-namespace EvoDynamic.McpForICloud.Calendar;
+namespace McpForICloud.Calendar;
 
 public sealed record EventInfo(
     string Id,
@@ -158,7 +158,7 @@ public sealed class CalendarTools(CalDavClient calDav, McpForICloudOptions optio
         {
             "BEGIN:VCALENDAR",
             "VERSION:2.0",
-            "PRODID:-//EvoDynamic//mcp-for-icloud//EN",
+            "PRODID:-//mcp-for-icloud//EN",
             "CALSCALE:GREGORIAN",
             "BEGIN:VEVENT",
             $"UID:{uid}",

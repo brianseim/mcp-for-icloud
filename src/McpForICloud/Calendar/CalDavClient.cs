@@ -4,7 +4,7 @@ using System.Text;
 using System.Xml.Linq;
 using ModelContextProtocol;
 
-namespace EvoDynamic.McpForICloud.Calendar;
+namespace McpForICloud.Calendar;
 
 public sealed record CalendarInfo(string Name, string Id, string? Color);
 

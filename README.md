@@ -1,10 +1,34 @@
-# MCP for iCloud — iCloud Mail & Calendar for Claude
+# MCP for iCloud — iCloud Mail & Calendar MCP server
 
-A local [MCP](https://modelcontextprotocol.io) server that lets Claude triage your iCloud Mail (including custom-domain aliases), rescue misfiled Junk, save reply drafts, and manage your iCloud Calendar.
+A local [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server that gives any MCP-capable AI assistant access to your iCloud Mail and Calendar: triage your inbox (including custom-domain aliases), rescue misfiled Junk, save reply drafts, and manage your calendar.
 
-It talks to iCloud directly over IMAP (`imap.mail.me.com`) and CalDAV (`caldav.icloud.com`) using an **app-specific password**, and runs on your PC as a child process of Claude Desktop. Nothing is hosted anywhere.
+It talks to iCloud directly over IMAP (`imap.mail.me.com`) and CalDAV (`caldav.icloud.com`) using an **app-specific password**, and runs on your own computer as a stdio MCP server launched by your MCP client. Nothing is hosted anywhere.
 
 > **Independent project.** MCP for iCloud is not affiliated with, endorsed by, or sponsored by Apple Inc. Use it at your own risk; see [Disclaimer](#disclaimer).
+
+## Who it's for
+
+People who live in iCloud Mail and Calendar, often with custom-domain aliases, and want an AI assistant that can actually work in them: sorting the inbox each morning, catching real mail that landed in Junk, drafting replies in their voice, and planning the week around their calendar.
+iCloud has no official MCP integration, so this fills that gap without handing your account to a hosted service: everything runs locally.
+
+It works with any MCP client that supports local (stdio) servers, such as Claude Desktop, VS Code with GitHub Copilot, Cursor, Windsurf, Cline or Continue.
+
+## Built with
+
+- **C# / .NET 10**, built as a single command-line executable.
+- **[ModelContextProtocol](https://github.com/modelcontextprotocol/csharp-sdk)**, the official MCP C# SDK, over the stdio transport.
+- **[MailKit](https://github.com/jstedfast/MailKit)** for iCloud Mail over IMAP.
+- **[Ical.Net](https://github.com/ical-org/ical.net)** plus a small hand-written CalDAV client for iCloud Calendar.
+- **Windows Credential Manager** for the app-specific password (environment variables elsewhere).
+
+```text
+src/McpForICloud/
+  Program.cs                 host + MCP server registration
+  McpForICloudOptions.cs     config.json loading, priority rules
+  CredentialProvider.cs      Credential Manager / env var lookup
+  Mail/                      IMAP connection, tools, triage and spam scoring, unsubscribe parsing
+  Calendar/                  CalDAV client and calendar tools
+```
 
 ## What it can do
 
@@ -24,21 +48,23 @@ It talks to iCloud directly over IMAP (`imap.mail.me.com`) and CalDAV (`caldav.i
 
 **There is deliberately no send tool and no permanent delete.** Drafts land in iCloud Drafts and you send them from Mail on any device. `mail_delete` only moves mail to Trash, where it stays recoverable until iCloud empties it.
 
+Every tool carries MCP annotations (`readOnlyHint`, `destructiveHint`), so clients that support them can ask before running anything that changes your mail or calendar.
+
 ## Setup (about 10 minutes)
 
 ### Prerequisites
-- Windows (credentials are read from Credential Manager). macOS works too; see [macOS](#macos).
+- Windows (credentials are read from Credential Manager). macOS and Linux work too; see [macOS and Linux](#macos-and-linux).
 - [.NET 10 SDK](https://dotnet.microsoft.com/download).
-- Claude Desktop.
+- An MCP client that supports local stdio servers.
 
 ### 0. Build it
 
 ```bash
-git clone https://github.com/EvoDynamic/mcp-for-icloud.git
+git clone https://github.com/brianseim/mcp-for-icloud.git
 ```
 
 ```bash
-dotnet publish mcp-for-icloud/src/EvoDynamic.McpForICloud/EvoDynamic.McpForICloud.csproj -c Release -o mcp-for-icloud/publish
+dotnet publish mcp-for-icloud/src/McpForICloud/McpForICloud.csproj -c Release -o mcp-for-icloud/publish
 ```
 
 ### 1. Create an app-specific password
@@ -59,8 +85,11 @@ Copy `config.example.json` to `%APPDATA%\mcp-for-icloud\config.json` and fill in
 
 If your Apple ID is not an @icloud.com/@me.com address (e.g. it's a Gmail address), also set `MailUser` to your @icloud.com address — that's the IMAP login.
 
-### 4. Register it with Claude Desktop
-Open Claude Desktop → **Settings → Developer → Edit Config** and add to `claude_desktop_config.json`:
+### 4. Register it with your MCP client
+The server is a plain stdio executable with no arguments: point your client at the full path of `publish\mcp-for-icloud.exe`.
+Restart the client after changing its configuration.
+
+**Claude Desktop, Cursor, Windsurf, Cline** and most other clients use an `mcpServers` object (Claude Desktop: **Settings → Developer → Edit Config**; Cursor: `~/.cursor/mcp.json`):
 
 ```json
 {
@@ -72,13 +101,24 @@ Open Claude Desktop → **Settings → Developer → Edit Config** and add to `c
 }
 ```
 
-Use the full path to your `publish` folder. (Merge into the existing `mcpServers` object if you already have one.) Fully quit and reopen Claude Desktop.
+**VS Code (GitHub Copilot agent mode)** uses `.vscode/mcp.json` in a workspace, or your user `mcp.json`:
 
-### 5. Give Claude your working rules
-Create a Claude project for your assistant, paste [`docs/example-project-instructions.md`](docs/example-project-instructions.md) into its instructions, and edit the priorities section. In Claude's tool settings, leave the write tools on "ask before use".
+```json
+{
+  "servers": {
+    "mcp-for-icloud": {
+      "type": "stdio",
+      "command": "C:\\path\\to\\mcp-for-icloud\\publish\\mcp-for-icloud.exe"
+    }
+  }
+}
+```
+
+### 5. Give your assistant working rules
+Paste [`docs/example-assistant-instructions.md`](docs/example-assistant-instructions.md) into your client's custom instructions (a project, custom mode, rules file or system prompt, depending on the client) and edit the priorities section.
+If your client lets you, require approval before tools that change things run.
 
 ### 6. Try it
-In a chat in that project:
 - "What needs my attention in email today?"
 - "Check my spam for anything real from the last two weeks."
 - "Draft a reply to the latest email from Dana saying Thursday works."
@@ -89,15 +129,15 @@ In a chat in that project:
 Each machine runs its own copy of the server; they all talk to the same iCloud account.
 
 1. Install the [prerequisites](#prerequisites), then clone and build ([step 0](#0-build-it)).
-2. Create a **separate app-specific password** for this machine (e.g. `MCP for iCloud – laptop`), so you can revoke one device without breaking the others, and store it with `cmdkey` as in [step 2](#2-store-it-in-windows-credential-manager).
+2. Create a **separate app-specific password** for this machine (e.g. `MCP for iCloud – laptop`), so you can revoke one device without breaking the others, and store it as in [step 2](#2-store-it-in-windows-credential-manager).
 3. Copy `%APPDATA%\mcp-for-icloud\config.json` from your existing machine instead of writing a new one.
-4. Register the server with Claude Desktop ([step 4](#4-register-it-with-claude-desktop)) using this machine's `publish` path, then fully quit Claude Desktop from the system tray and reopen it.
-5. If you sign in to the same Claude account, your project and its instructions are already there. Ask it "List my calendars" to confirm the connection.
+4. Register the server with your MCP client ([step 4](#4-register-it-with-your-mcp-client)) using this machine's `publish` path, then restart the client.
+5. Ask your assistant to "list my calendars" to confirm the connection.
 6. If you'll change code on this machine, enable the [pre-push hook](#contributing-workflow).
 
-### macOS
+### macOS and Linux
 
-Credential Manager is Windows-only, so pass the login through environment variables in `claude_desktop_config.json` instead.
+Credential Manager is Windows-only, so pass the login through environment variables in your client's server entry instead.
 This stores the app-specific password in plain text in that file; it's limited to mail, calendar and contacts and can be revoked at any time.
 
 ```json
@@ -114,24 +154,24 @@ The config file lives at `~/.config/mcp-for-icloud/config.json`.
 
 ## Updating after code changes
 
-Fully quit Claude Desktop first, or the running server will lock the files. Then, from the repo root:
+Stop your MCP client first (fully quit it), or the running server will lock the files. Then, from the repo root:
 
 ```bash
 git pull
 ```
 
 ```bash
-dotnet publish src/EvoDynamic.McpForICloud/EvoDynamic.McpForICloud.csproj -c Release -o publish
+dotnet publish src/McpForICloud/McpForICloud.csproj -c Release -o publish
 ```
 
-Reopen Claude Desktop to load the new version.
+Start the client again to load the new version.
 
-### Upgrading from AI VA
+### Upgrading from pre-release builds
 
-This project used to be called AI VA. After updating:
-- In `claude_desktop_config.json`, rename the `ai-va` entry to `mcp-for-icloud` and point it at `publish\mcp-for-icloud.exe` (the old `AiVa.Mcp.exe` is no longer built; delete it from `publish`).
-- Your existing setup keeps working without other changes: the old `AiVa-iCloud` credential, `%APPDATA%\AiVa\config.json` and `AIVA_*` environment variables are still read when the new ones don't exist.
-- To move to the new names, run the `cmdkey` command from [step 2](#2-store-it-in-windows-credential-manager), move the config to `%APPDATA%\mcp-for-icloud\config.json`, then remove the old credential:
+Early builds used different names.
+They are still read when the new ones don't exist, so an existing setup keeps working: the `AiVa-iCloud` credential, `%APPDATA%\AiVa\config.json` and `AIVA_*` environment variables.
+The old `AiVa.Mcp.exe` is no longer built, so point your client at `publish\mcp-for-icloud.exe`.
+To move to the new names, run the `cmdkey` command from [step 2](#2-store-it-in-windows-credential-manager), move the config to `%APPDATA%\mcp-for-icloud\config.json`, then remove the old credential:
 
 ```bash
 cmdkey /delete:AiVa-iCloud
@@ -149,10 +189,12 @@ git config core.hooksPath .githooks
 
 Then work on a branch, push it, and open a PR with `gh pr create`; merge with `gh pr merge` or on GitHub.
 
+Planned work is tracked in [ROADMAP.md](ROADMAP.md).
+
 ## Notes and limits
-- Local MCP servers work in **Claude Desktop** (chats and projects). claude.ai in a browser or on mobile can't reach a local server; that would need this hosted as a remote MCP server with auth.
+- This is a local stdio server. Web and mobile chat apps that can only reach remote MCP servers can't use it; that would need it hosted as a remote MCP server with auth (see the [roadmap](ROADMAP.md)).
 - Recurring events: titles/locations/notes can be edited (whole series); time changes are left to the Calendar app.
-- Creating events with invitees isn't supported yet; Claude can draft the invite email instead.
+- Creating events with invitees isn't supported yet; your assistant can draft the invite email instead.
 - Priority scores are hints with reasons, not verdicts. Tune them in `config.json` → `Priority`.
 - Overrides: `MCP_FOR_ICLOUD_CONFIG` (config path), `MCP_FOR_ICLOUD_USER` / `MCP_FOR_ICLOUD_APP_PASSWORD` (if you'd rather not use Credential Manager).
 
@@ -163,22 +205,22 @@ This software is provided "as is", without warranty of any kind, as stated in th
 It reads and changes your real email and calendar on your behalf, driven by an AI model that can misunderstand instructions or make mistakes.
 
 - Review every draft before you send it, and every proposed move, flag or calendar change before you approve it.
-- Keep your Claude tool permissions on "ask before use" for tools that change things.
+- Keep your MCP client set to ask before running tools that change things, if it supports that.
 - Mail moved between folders and calendar events that are edited or deleted may not be recoverable; keep the backups you'd want anyway (for example iCloud's own data recovery).
 - Your app-specific password grants access to your iCloud Mail, Contacts and Calendars. Store it only as described above, and revoke it at <https://account.apple.com> if a device is lost or you stop using this tool.
-- Message and calendar content is passed to the AI model you use with Claude Desktop, under that provider's terms and privacy policy.
+- Message and calendar content the server returns is passed to whichever AI model your MCP client uses, under that provider's terms and privacy policy.
 - Apple may change or restrict iCloud's IMAP or CalDAV access at any time, which can break this tool without notice.
 
-The authors and EvoDynamic Inc are not liable for lost or altered data, missed messages or appointments, or any other damages arising from use of this software.
+The author is not liable for lost or altered data, missed messages or appointments, or any other damages arising from use of this software.
 
 ### Trademarks
 
 Apple, iCloud, and iCloud Mail are trademarks of Apple Inc., registered in the U.S. and other countries.
 They are used here only to describe the service this software works with.
 MCP for iCloud is an independent project and is not affiliated with, endorsed by, or sponsored by Apple Inc.
-Claude is a trademark of Anthropic, PBC; this project is likewise not affiliated with or endorsed by Anthropic.
+Other product names mentioned here are trademarks of their respective owners and are used only to identify compatible clients.
 
 ## License
 
-Copyright (c) 2026 EvoDynamic Inc.
+Copyright (c) 2026 Brian Seim.
 Released under the [MIT License](LICENSE).

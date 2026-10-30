@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace EvoDynamic.McpForICloud;
+namespace McpForICloud;
 
 /// <summary>
 /// User settings loaded from <c>%APPDATA%\mcp-for-icloud\config.json</c> (or the path in <c>MCP_FOR_ICLOUD_CONFIG</c>).

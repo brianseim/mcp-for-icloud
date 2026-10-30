@@ -1,10 +1,10 @@
 using MailKit;
 
-namespace EvoDynamic.McpForICloud.Mail;
+namespace McpForICloud.Mail;
 
 /// <summary>
 /// Cheap, explainable signals that pre-rank messages.
-/// The scores are a starting point for Claude, not a verdict; every point comes with a reason it can show you.
+/// The scores are a starting point for the assistant, not a verdict; every point comes with a reason it can show you.
 /// </summary>
 public static class PriorityScorer
 {
